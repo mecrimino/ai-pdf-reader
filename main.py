@@ -1,10 +1,17 @@
 from openai import OpenAI
-import json
+from pypdf import PdfReader
 import os
 
-# =====================================
+# ==========================================
 # CONFIG
-# =====================================
+# ==========================================
+from openai import OpenAI
+from pypdf import PdfReader
+import os
+
+# ==========================
+# MORPH CONFIG
+# ==========================
 
 API_KEY = "sk-R2OGPh7B2xUoKm-WqYgdKHoPxNB4xoQtB6pIkQMBsOh0S40T"
 
@@ -15,93 +22,90 @@ client = OpenAI(
 
 MODEL = "morph-v3-fast"
 
-HISTORY_FILE = "history.json"
-
-SYSTEM_PROMPT = (
-    "You are a helpful AI assistant."
-)
-
-# =====================================
-# LOAD CHAT HISTORY
-# =====================================
-
-if os.path.exists(HISTORY_FILE):
-    with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-        messages = json.load(f)
-else:
-    messages = [
-        {
-            "role": "system",
-            "content": SYSTEM_PROMPT
-        }
-    ]
-
-# =====================================
-# SAVE FUNCTION
-# =====================================
-
-def save_history():
-    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-        json.dump(messages, f, indent=4)
-
-# =====================================
-# START
-# =====================================
+# ==========================================
+# LOAD PDF
+# ==========================================
 
 print("=" * 60)
-print("🤖 Morph AI Chatbot")
-print("Commands:")
-print("exit    -> Quit")
-print("reset   -> Clear history")
-print("history -> Show conversation")
+print("🤖 AI PDF CHAT")
 print("=" * 60)
 
-# =====================================
+while True:
+    pdf_path = input("\nEnter PDF file name/path: ").strip().strip('"')
+
+    if os.path.exists(pdf_path):
+        break
+
+    print("❌ File not found. Please try again.")
+
+try:
+    reader = PdfReader(pdf_path)
+
+    pdf_text = ""
+
+    for page in reader.pages:
+        text = page.extract_text()
+
+        if text:
+            pdf_text += text + "\n"
+
+except Exception as e:
+    print("Error loading PDF:", e)
+    exit()
+
+print("\n✅ PDF Loaded Successfully!")
+print("📄 PDF:", os.path.basename(pdf_path))
+print(f"📚 Characters Loaded: {len(pdf_text)}")
+
+# ==========================================
+# CREATE CHAT HISTORY
+# ==========================================
+
+messages = [
+    {
+        "role": "system",
+        "content": f"""
+You are an AI assistant.
+
+Answer ONLY from the PDF below.
+
+If the answer does not exist inside the PDF,
+reply exactly:
+
+'I could not find that information in the PDF.'
+
+================ PDF =================
+
+{pdf_text}
+
+======================================
+"""
+    }
+]
+
+print("\nYou can now ask questions about the PDF.")
+print("Type 'exit' to quit.")
+print("-" * 60)
+
+# ==========================================
 # CHAT LOOP
-# =====================================
+# ==========================================
 
 while True:
 
-    user_input = input("\nYou: ").strip()
+    question = input("\nYou: ").strip()
 
-    if user_input == "":
-        continue
-
-    cmd = user_input.lower()
-
-    # Exit
-    if cmd == "exit":
-        save_history()
-        print("Conversation saved.")
+    if question.lower() == "exit":
+        print("\n👋 Goodbye!")
         break
 
-    # Reset
-    if cmd == "reset":
-        messages = [
-            {
-                "role": "system",
-                "content": SYSTEM_PROMPT
-            }
-        ]
-        save_history()
-        print("Conversation cleared.")
+    if question == "":
         continue
 
-    # Show history
-    if cmd == "history":
-        print("\n----------- HISTORY -----------")
-        for msg in messages:
-            if msg["role"] == "system":
-                continue
-            print(f"{msg['role'].capitalize()}: {msg['content']}")
-        print("-------------------------------")
-        continue
-
-    # Add user message
     messages.append(
         {
             "role": "user",
-            "content": user_input
+            "content": question
         }
     )
 
@@ -110,20 +114,20 @@ while True:
         response = client.chat.completions.create(
             model=MODEL,
             messages=messages,
+            temperature=0.2,
         )
 
-        reply = response.choices[0].message.content
+        answer = response.choices[0].message.content
 
-        print("\nMorph:", reply)
+        print("\nAI:", answer)
 
         messages.append(
             {
                 "role": "assistant",
-                "content": reply
+                "content": answer
             }
         )
 
-        save_history()
-
     except Exception as e:
-        print("\nError:", e)
+        print("\n❌ Error:", e)
+        
