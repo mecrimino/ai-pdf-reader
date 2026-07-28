@@ -13,7 +13,7 @@ import os
 # MORPH CONFIG
 # ==========================
 
-API_KEY = "sk-R2OGPh7B2xUoKm-WqYgdKHoPxNB4xoQtB6pIkQMBsOh0S40T"
+API_KEY = "YOUR API KEY"
 
 client = OpenAI(
     base_url="https://api.morphllm.com/v1",
